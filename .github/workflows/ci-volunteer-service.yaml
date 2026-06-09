@@ -15,7 +15,7 @@ env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: solidarytech_volunteer-service
   SERVICE_NAME: volunteer-service
-  GITOPS_REPO: dougls/hackathon-gitops
+  GITOPS_REPO: gabriel-cupertino/hackathon-gitops
   GITOPS_DEPLOYMENT_PATH: volunteer-service/deployment.yaml
 
 jobs:

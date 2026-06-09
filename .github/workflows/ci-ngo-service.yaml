@@ -15,7 +15,7 @@ env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: solidarytech_ngo-service
   SERVICE_NAME: ngo-service
-  GITOPS_REPO: dougls/hackathon-gitops
+  GITOPS_REPO: gabriel-cupertino/hackathon-gitops
   GITOPS_DEPLOYMENT_PATH: ngo-service/deployment.yaml
   DB_INIT_SQL_PATH: ngo-service/db/init.sql
   GITOPS_CONFIGMAP_PATH: ngo-service/configmap.yaml

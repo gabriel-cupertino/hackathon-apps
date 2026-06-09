@@ -15,7 +15,7 @@ env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: solidarytech_donation-service
   SERVICE_NAME: donation-service
-  GITOPS_REPO: dougls/hackathon-gitops
+  GITOPS_REPO: gabriel-cupertino/hackathon-gitops
   GITOPS_DEPLOYMENT_PATH: donation-service/deployment.yaml
   DB_INIT_SQL_PATH: donation-service/db/init.sql
   GITOPS_CONFIGMAP_PATH: donation-service/configmap.yaml
