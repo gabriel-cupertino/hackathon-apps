@@ -1,0 +1,19 @@
+services:
+  volunteer-service:
+    build: .
+    ports:
+      - "8083:8083"
+    environment:
+      - AWS_DYNAMODB_TABLE=SolidaryTechVolunteers
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - PORT=8083
+    depends_on:
+      - dynamodb-local
+
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    ports:
+      - "8000:8000"
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-inMemory"]

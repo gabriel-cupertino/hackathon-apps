@@ -1,0 +1,27 @@
+services:
+  ngo-service:
+    build: .
+    ports:
+      - "8081:8081"
+    environment:
+      - DATABASE_URL=postgres://solidarytech_user:solidarytech_pass@postgres:5432/ngo_db?sslmode=disable
+      - PORT=8081
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=solidarytech_user
+      - POSTGRES_PASSWORD=solidarytech_pass
+      - POSTGRES_DB=ngo_db
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U solidarytech_user -d ngo_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
