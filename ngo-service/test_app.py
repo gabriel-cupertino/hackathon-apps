@@ -1,5 +1,5 @@
 import os
-import sys
+import pytest
 from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost/testdb")
@@ -8,9 +8,6 @@ with patch("psycopg2.pool.SimpleConnectionPool") as _mock_pool_cls:
     _mock_pool = MagicMock()
     _mock_pool_cls.return_value = _mock_pool
     import app as ngo_app
-
-import pytest
-import json
 
 
 @pytest.fixture

@@ -1,5 +1,5 @@
 import os
-import sys
+import pytest
 from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("AWS_DYNAMODB_TABLE", "TestVolunteers")
@@ -11,9 +11,6 @@ with patch("boto3.resource") as _mock_boto3:
     _mock_dynamodb.Table.return_value = _mock_table
     _mock_boto3.return_value = _mock_dynamodb
     import app as volunteer_app
-
-import pytest
-import json
 
 
 @pytest.fixture
