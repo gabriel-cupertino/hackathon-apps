@@ -4,6 +4,7 @@ import uuid
 import time
 import logging
 import boto3
+from boto3.dynamodb.conditions import Attr
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 
@@ -64,7 +65,7 @@ def get_volunteers_by_ngo(ngo_id):
         # Nota para avaliação dos alunos: Operação Scan simplificada para fins de desenvolvimento.
         # Em cenários complexos de produção, índices globais secundários (GSI) seriam exigidos.
         response = table.scan(
-            FilterExpression=boto3.dynamodb.conditions.Attr('ngo_id').eq(ngo_id)
+            FilterExpression=Attr('ngo_id').eq(ngo_id)
         )
         return jsonify(response.get('Items', [])), 200
     except Exception as e:
