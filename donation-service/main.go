@@ -36,7 +36,11 @@ func main() {
 	_ = godotenv.Load()
 
 	shutdown := initTracer()
-	defer shutdown(context.Background())
+	defer func() {
+		if err := shutdown(context.Background()); err != nil {
+			log.Printf("Erro ao encerrar OTel tracer: %v", err)
+		}
+	}()
 
 	port := os.Getenv("PORT")
 	if port == "" {
