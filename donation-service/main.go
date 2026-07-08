@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"log"
@@ -13,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/joho/godotenv"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type Donation struct {
@@ -32,6 +34,9 @@ type App struct {
 
 func main() {
 	_ = godotenv.Load()
+
+	shutdown := initTracer()
+	defer shutdown(context.Background())
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -64,8 +69,9 @@ func main() {
 	mux.HandleFunc("/health", app.HealthHandler)
 	mux.HandleFunc("/donations", app.DonationHandler)
 
+	handler := otelhttp.NewHandler(mux, "donation-service")
 	log.Printf("donation-service rodando na porta %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, mux))
+	log.Fatal(http.ListenAndServe(":"+port, handler))
 }
 
 func (a *App) HealthHandler(w http.ResponseWriter, r *http.Request) {

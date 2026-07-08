@@ -1,0 +1,7 @@
+# Go binaries
+donation-service/donation-service
+**/tmp/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+.env
