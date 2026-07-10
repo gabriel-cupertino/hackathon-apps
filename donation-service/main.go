@@ -72,8 +72,9 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", app.HealthHandler)
 	mux.HandleFunc("/donations", app.DonationHandler)
+	mux.Handle("/metrics", metricsHandler())
 
-	handler := otelhttp.NewHandler(mux, "donation-service")
+	handler := prometheusMiddleware(otelhttp.NewHandler(mux, "donation-service"))
 	log.Printf("donation-service rodando na porta %s", port)
 	log.Fatal(http.ListenAndServe(":"+port, handler))
 }
