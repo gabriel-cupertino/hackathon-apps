@@ -9,13 +9,22 @@ import (
 	"os"
 	"time"
 
+	"github.com/XSAM/otelsql"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/joho/godotenv"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	"go.opentelemetry.io/otel/trace"
 )
+
+// tracer para spans manuais (ex.: chamada ao SQS). Usa o TracerProvider global
+// configurado em initTracer(); se o tracing estiver desativado, vira no-op.
+var tracer = otel.Tracer("donation-service")
 
 type Donation struct {
 	ID        int       `json:"id"`
@@ -52,7 +61,7 @@ func main() {
 		log.Fatal("DATABASE_URL é obrigatória")
 	}
 
-	db, err := sql.Open("pgx", dbURL)
+	db, err := otelsql.Open("pgx", dbURL, otelsql.WithAttributes(semconv.DBSystemPostgreSQL))
 	if err != nil || db.Ping() != nil {
 		log.Fatalf("Erro ao conectar ao banco de dados: %v", err)
 	}
@@ -98,7 +107,7 @@ func (a *App) DonationHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		d.Status = "APPROVED" // Simulação de gateway de pagamento
-		err := a.DB.QueryRow(
+		err := a.DB.QueryRowContext(r.Context(),
 			"INSERT INTO donations (ngo_id, amount, donor_name, status) VALUES ($1, $2, $3, $4) RETURNING id, created_at",
 			d.NgoID, d.Amount, d.DonorName, d.Status,
 		).Scan(&d.ID, &d.CreatedAt)
@@ -110,7 +119,9 @@ func (a *App) DonationHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if a.SqsSvc != nil {
-			go a.sendNotificationEvent(d)
+			// WithoutCancel preserva o span do request (para o trace) mas evita que o
+			// contexto seja cancelado quando o handler retorna antes da goroutine terminar.
+			go a.sendNotificationEvent(context.WithoutCancel(r.Context()), d)
 		}
 
 		w.WriteHeader(http.StatusCreated)
@@ -121,7 +132,7 @@ func (a *App) DonationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
-		rows, err := a.DB.Query("SELECT id, ngo_id, amount, donor_name, status, created_at FROM donations ORDER BY id DESC")
+		rows, err := a.DB.QueryContext(r.Context(), "SELECT id, ngo_id, amount, donor_name, status, created_at FROM donations ORDER BY id DESC")
 		if err != nil {
 			http.Error(w, `{"error":"Erro interno"}`, http.StatusInternalServerError)
 			return
@@ -147,13 +158,23 @@ func (a *App) DonationHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, `{"error":"Método não permitido"}`, http.StatusMethodNotAllowed)
 }
 
-func (a *App) sendNotificationEvent(d Donation) {
+func (a *App) sendNotificationEvent(ctx context.Context, d Donation) {
+	ctx, span := tracer.Start(ctx, "SQS SendMessage",
+		trace.WithSpanKind(trace.SpanKindProducer),
+		trace.WithAttributes(
+			attribute.String("messaging.system", "aws_sqs"),
+			attribute.String("messaging.destination.name", a.SqsQueueURL),
+		),
+	)
+	defer span.End()
+
 	body, _ := json.Marshal(d)
-	_, err := a.SqsSvc.SendMessage(&sqs.SendMessageInput{
+	_, err := a.SqsSvc.SendMessageWithContext(ctx, &sqs.SendMessageInput{
 		MessageBody: aws.String(string(body)),
 		QueueUrl:    aws.String(a.SqsQueueURL),
 	})
 	if err != nil {
+		span.RecordError(err)
 		log.Printf("Falha ao despachar evento SQS: %v", err)
 	}
 }
